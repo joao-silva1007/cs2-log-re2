@@ -1,52 +1,50 @@
-package cs2log_test
+package cs2log
 
 import (
 	"fmt"
+	regexp "github.com/wasilibs/go-re2"
 	"reflect"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
-
-	cs2log "github.com/janstuemmel/cs2-log"
 )
 
 func ExampleParse() {
 
-	var msg cs2log.Message
+	var msg Message
 
 	// a line from a server logfile
-	line := `L 11/05/2018 - 15:44:36: "Player-Name<12><[U:1:29384012]><CT>" purchased "m4a1"`
+	line := `11/05/2018 - 15:44:36.123 - "Player-Name<12><[U:1:29384012]><CT>" purchased "m4a1"`
 
 	// parse Message
-	msg, _ = cs2log.Parse(line)
+	msg, _ = Parse(line)
 
 	fmt.Println(msg.GetType())
 	fmt.Println(msg.GetTime().String())
 	// Output:
 	// PlayerPurchase
-	// 2018-11-05 15:44:36 +0000 UTC
+	// 2018-11-05 15:44:36.123 +0000 UTC
 }
 
 func ExampleToJSON() {
 
 	// parse Message
-	msg, _ := cs2log.Parse(`L 11/05/2018 - 15:44:36: "Player-Name<12><[U:1:29384012]><CT>" purchased "m4a1"`)
+	msg, _ := Parse(`11/05/2018 - 15:44:36.123 - "Player-Name<12><[U:1:29384012]><CT>" purchased "m4a1"`)
 
 	// cast Message interface type to PlayerPurchase type
-	playerPurchase, _ := msg.(cs2log.PlayerPurchase)
+	playerPurchase, _ := msg.(PlayerPurchase)
 
 	fmt.Println(playerPurchase.Player.SteamID)
 	fmt.Println(playerPurchase.Item)
 
 	// get json non-html-escaped
-	jsn := cs2log.ToJSON(msg)
+	jsn := ToJSON(msg)
 
 	fmt.Println(jsn)
 	// Output:
 	// [U:1:29384012]
 	// m4a1
-	// {"time":"2018-11-05T15:44:36Z","type":"PlayerPurchase","player":{"name":"Player-Name","id":12,"steam_id":"[U:1:29384012]","side":"CT"},"item":"m4a1"}
+	// {"time":"2018-11-05T15:44:36.123Z","type":"PlayerPurchase","player":{"name":"Player-Name","id":12,"steam_id":"[U:1:29384012]","side":"CT"},"item":"m4a1"}
 }
 
 func TestMessages(t *testing.T) {
@@ -57,14 +55,14 @@ func TestMessages(t *testing.T) {
 		l := line(`foo`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "Unknown", m.GetType())
 
 		// when
-		u, ok := m.(cs2log.Unknown)
+		u, ok := m.(Unknown)
 
 		// then
 		assert(t, true, ok)
@@ -77,14 +75,14 @@ func TestMessages(t *testing.T) {
 		l := line(`server_message: "quit"`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "ServerMessage", m.GetType())
 
 		// when
-		sm, ok := m.(cs2log.ServerMessage)
+		sm, ok := m.(ServerMessage)
 
 		// then
 		assert(t, true, ok)
@@ -97,14 +95,14 @@ func TestMessages(t *testing.T) {
 		l := line(`Starting Freeze period`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "FreezTimeStart", m.GetType())
 
 		// when
-		_, ok := m.(cs2log.FreezTimeStart)
+		_, ok := m.(FreezTimeStart)
 
 		// then
 		assert(t, true, ok)
@@ -116,14 +114,14 @@ func TestMessages(t *testing.T) {
 		l := line(`World triggered "Match_Start" on "de_cache"`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "WorldMatchStart", m.GetType())
 
 		// when
-		ms, ok := m.(cs2log.WorldMatchStart)
+		ms, ok := m.(WorldMatchStart)
 
 		// then
 		assert(t, true, ok)
@@ -136,14 +134,14 @@ func TestMessages(t *testing.T) {
 		l := line(`World triggered "Restart_Round_(1_second)`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "WorldRoundRestart", m.GetType())
 
 		// when
-		mr, ok := m.(cs2log.WorldRoundRestart)
+		mr, ok := m.(WorldRoundRestart)
 
 		// then
 		assert(t, true, ok)
@@ -156,7 +154,7 @@ func TestMessages(t *testing.T) {
 		l := line(`World triggered "Round_Start"`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
@@ -169,7 +167,7 @@ func TestMessages(t *testing.T) {
 		l := line(`World triggered "Round_End"`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
@@ -182,7 +180,7 @@ func TestMessages(t *testing.T) {
 		l := line(`World triggered "Game_Commencing"`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
@@ -195,14 +193,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<12><[U:1:29384012]><TERRORIST>" purchased "m4a1"`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerPurchase", m.GetType())
 
 		// when
-		pp, ok := m.(cs2log.PlayerPurchase)
+		pp, ok := m.(PlayerPurchase)
 
 		// then
 		assert(t, true, ok)
@@ -215,14 +213,14 @@ func TestMessages(t *testing.T) {
 		l := line(`Team "TERRORIST" scored "1" with "5" players`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "TeamScored", m.GetType())
 
 		// when
-		ts, ok := m.(cs2log.TeamScored)
+		ts, ok := m.(TeamScored)
 
 		// then
 		assert(t, true, ok)
@@ -237,14 +235,14 @@ func TestMessages(t *testing.T) {
 		l := line(`Team "CT" scored "1" with "5" players`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "TeamScored", m.GetType())
 
 		// when
-		ts, ok := m.(cs2log.TeamScored)
+		ts, ok := m.(TeamScored)
 
 		// then
 		assert(t, true, ok)
@@ -259,14 +257,14 @@ func TestMessages(t *testing.T) {
 		l := line(`Team "CT" triggered "SFUI_Notice_CTs_Win" (CT "1") (T "0")`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "TeamNotice", m.GetType())
 
 		// when
-		tn, ok := m.(cs2log.TeamNotice)
+		tn, ok := m.(TeamNotice)
 
 		// then
 		assert(t, true, ok)
@@ -282,14 +280,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<12><[U:1:29384012]><>" connected, address "foo"`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerConnected", m.GetType())
 
 		// when
-		pc, ok := m.(cs2log.PlayerConnected)
+		pc, ok := m.(PlayerConnected)
 
 		// then
 		assert(t, true, ok)
@@ -305,14 +303,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<12><[U:1:29384012]><TERRORIST>" disconnected (reason "Kicked by Console : For killing a teammate at round start")`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerDisconnected", m.GetType())
 
 		// when
-		pd, ok := m.(cs2log.PlayerDisconnected)
+		pd, ok := m.(PlayerDisconnected)
 
 		// then
 		assert(t, true, ok)
@@ -328,14 +326,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<12><[U:1:29384012]><>" entered the game`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerEntered", m.GetType())
 
 		// when
-		pe, ok := m.(cs2log.PlayerEntered)
+		pe, ok := m.(PlayerEntered)
 
 		// then
 		assert(t, true, ok)
@@ -350,14 +348,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<12><[U:1:29384012]>" switched from team <TERRORIST> to <Spectator>`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerSwitched", m.GetType())
 
 		// when
-		ps, ok := m.(cs2log.PlayerSwitched)
+		ps, ok := m.(PlayerSwitched)
 
 		// then
 		assert(t, true, ok)
@@ -374,14 +372,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<12><[U:1:29384012]><TERRORIST>" say_team ".ready"`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerSay", m.GetType())
 
 		// when
-		ps, ok := m.(cs2log.PlayerSay)
+		ps, ok := m.(PlayerSay)
 
 		// then
 		assert(t, true, ok)
@@ -398,14 +396,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<12><[U:1:29384012]><TERRORIST>" [-225 -1829 -168] killed "Zim<20><BOT><CT>" [-476 -1709 -110] with "glock"`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerKill", m.GetType())
 
 		// when
-		pk, ok := m.(cs2log.PlayerKill)
+		pk, ok := m.(PlayerKill)
 
 		// then
 		assert(t, true, ok)
@@ -437,14 +435,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<12><[U:1:29384012]><TERRORIST>" [-225 -1829 -168] killed "Zim<20><BOT><CT>" [-476 -1709 -110] with "glock" (headshot penetrated)`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerKill", m.GetType())
 
 		// when
-		pk, ok := m.(cs2log.PlayerKill)
+		pk, ok := m.(PlayerKill)
 
 		// then
 		assert(t, true, ok)
@@ -476,14 +474,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<10><STEAM_1:1:0101010><CT>" assisted killing "Player-Name<12><[U:1:29384012]><TERRORIST>"`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerKillAssist", m.GetType())
 
 		// when
-		pk, ok := m.(cs2log.PlayerKillAssist)
+		pk, ok := m.(PlayerKillAssist)
 
 		// then
 		assert(t, true, ok)
@@ -503,14 +501,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<2><[U:1:29384012]><TERRORIST>" [480 -67 1782] attacked "Jon<9><BOT><CT>" [-134 362 1613] with "ak47" (damage "27") (damage_armor "3") (health "73") (armor "96") (hitgroup "chest")`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerAttack", m.GetType())
 
 		// when
-		pa, ok := m.(cs2log.PlayerAttack)
+		pa, ok := m.(PlayerAttack)
 
 		// then
 		assert(t, true, ok)
@@ -545,14 +543,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<2><[U:1:29384012]><TERRORIST>" [480 -67 1782] was killed by the bomb.`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerKilledBomb", m.GetType())
 
 		// when
-		pk, ok := m.(cs2log.PlayerKilledBomb)
+		pk, ok := m.(PlayerKilledBomb)
 
 		// then
 		assert(t, true, ok)
@@ -572,14 +570,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<2><[U:1:29384012]><TERRORIST>" [480 -67 1782] committed suicide with "hegrenade"`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerKilledSuicide", m.GetType())
 
 		// when
-		pk, ok := m.(cs2log.PlayerKilledSuicide)
+		pk, ok := m.(PlayerKilledSuicide)
 
 		// then
 		assert(t, true, ok)
@@ -601,14 +599,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<2><[U:1:29384012]><TERRORIST>" picked up "ump45"`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerPickedUp", m.GetType())
 
 		// when
-		pp, ok := m.(cs2log.PlayerPickedUp)
+		pp, ok := m.(PlayerPickedUp)
 
 		// then
 		assert(t, true, ok)
@@ -626,14 +624,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<2><[U:1:29384012]><TERRORIST>" dropped "knife"`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerDropped", m.GetType())
 
 		// when
-		pd, ok := m.(cs2log.PlayerDropped)
+		pd, ok := m.(PlayerDropped)
 
 		// then
 		assert(t, true, ok)
@@ -651,14 +649,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<2><[U:1:29384012]><TERRORIST>" money change 2050-1000 = $1050 (tracked) (purchase: item_assaultsuit)`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerMoneyChange", m.GetType())
 
 		// when
-		pm, ok := m.(cs2log.PlayerMoneyChange)
+		pm, ok := m.(PlayerMoneyChange)
 
 		// then
 		assert(t, true, ok)
@@ -679,14 +677,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<2><[U:1:29384012]><TERRORIST>" money change 7700+300 = $8000 (tracked)`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerMoneyChange", m.GetType())
 
 		// when
-		pm, ok := m.(cs2log.PlayerMoneyChange)
+		pm, ok := m.(PlayerMoneyChange)
 
 		// then
 		assert(t, true, ok)
@@ -712,7 +710,7 @@ func TestMessages(t *testing.T) {
 		for msg, l := range lines {
 
 			// when
-			m, err := cs2log.Parse(l)
+			m, err := Parse(l)
 
 			// then
 			assert(t, nil, err)
@@ -731,7 +729,7 @@ func TestMessages(t *testing.T) {
 		for msg, l := range lines {
 
 			// when
-			m, err := cs2log.Parse(l)
+			m, err := Parse(l)
 
 			// then
 			assert(t, nil, err)
@@ -745,14 +743,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<2><[U:1:29384012]><CT>" triggered "Begin_Bomb_Defuse_With_Kit"`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerBombBeginDefuse", m.GetType())
 
 		// when
-		pb, ok := m.(cs2log.PlayerBombBeginDefuse)
+		pb, ok := m.(PlayerBombBeginDefuse)
 
 		// then
 		assert(t, true, ok)
@@ -769,14 +767,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<2><[U:1:29384012]><CT>" triggered "Begin_Bomb_Defuse_Without_Kit"`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerBombBeginDefuse", m.GetType())
 
 		// when
-		pb, ok := m.(cs2log.PlayerBombBeginDefuse)
+		pb, ok := m.(PlayerBombBeginDefuse)
 
 		// then
 		assert(t, true, ok)
@@ -793,14 +791,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<12><[U:1:29384012]><TERRORIST>" threw smokegrenade [-716 -1636 -170]`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerThrew", m.GetType())
 
 		// when
-		pt, ok := m.(cs2log.PlayerThrew)
+		pt, ok := m.(PlayerThrew)
 
 		// then
 		assert(t, true, ok)
@@ -823,14 +821,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<12><[U:1:29384012]><TERRORIST>" threw flashbang [-716 -1636 -170] flashbang entindex 163)`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerThrew", m.GetType())
 
 		// when
-		pt, ok := m.(cs2log.PlayerThrew)
+		pt, ok := m.(PlayerThrew)
 
 		// then
 		assert(t, true, ok)
@@ -853,14 +851,14 @@ func TestMessages(t *testing.T) {
 		l := line(`"Player-Name<12><[U:1:29384012]><TERRORIST>" blinded for 3.45 by "Player-Name<10><STEAM_1:1:0101010><CT>" from flashbang entindex 163`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerBlinded", m.GetType())
 
 		// when
-		pb, ok := m.(cs2log.PlayerBlinded)
+		pb, ok := m.(PlayerBlinded)
 
 		// then
 		assert(t, true, ok)
@@ -884,14 +882,14 @@ func TestMessages(t *testing.T) {
 		l := line(`Molotov projectile spawned at -539.715820 -2332.986572 -100.142113, velocity -77.150497 824.855957 175.574585`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "ProjectileSpawned", m.GetType())
 
 		// when
-		ps, ok := m.(cs2log.ProjectileSpawned)
+		ps, ok := m.(ProjectileSpawned)
 
 		// then
 		assert(t, true, ok)
@@ -911,14 +909,14 @@ func TestMessages(t *testing.T) {
 		l := line(`Game Over: competitive mg_de_cache de_cache score 16:1 after 21 min`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "GameOver", m.GetType())
 
 		// when
-		g, ok := m.(cs2log.GameOver)
+		g, ok := m.(GameOver)
 
 		// then
 		assert(t, true, ok)
@@ -936,14 +934,14 @@ func TestMessages(t *testing.T) {
 		l := line(`Banid: "Player-Name<12><[U:1:29384012]><>" was banned "for 15.00 minutes" by "Console"`)
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerBanned", m.GetType())
 
 		// when
-		pb, ok := m.(cs2log.PlayerBanned)
+		pb, ok := m.(PlayerBanned)
 
 		// then
 		assert(t, true, ok)
@@ -960,9 +958,9 @@ func TestToJSON(t *testing.T) {
 	t.Run("Message to json", func(t *testing.T) {
 
 		// given
-		m, _ := cs2log.Parse(line(`"Player-Name<12><[U:1:29384012]><TERRORIST>" purchased "m4a1"`))
+		m, _ := Parse(line(`"Player-Name<12><[U:1:29384012]><TERRORIST>" purchased "m4a1"`))
 		expected := strip(`{
-				"time": "2018-11-05T15:44:36Z",
+				"time": "2018-11-05T15:44:36.123Z",
 				"type": "PlayerPurchase",
 				"player": {
 					"name": 		"Player-Name",
@@ -974,7 +972,7 @@ func TestToJSON(t *testing.T) {
 			}`)
 
 		// when
-		jsn := strip(cs2log.ToJSON(m))
+		jsn := strip(ToJSON(m))
 
 		// then
 		assert(t, expected, jsn)
@@ -983,10 +981,10 @@ func TestToJSON(t *testing.T) {
 	t.Run("nil Message to json", func(t *testing.T) {
 
 		// given
-		var m cs2log.Message
+		var m Message
 
 		// when
-		jsn := cs2log.ToJSON(m)
+		jsn := ToJSON(m)
 
 		// then
 		assert(t, "null", strip(jsn))
@@ -999,15 +997,15 @@ func TestParse(t *testing.T) {
 	t.Run("time and type", func(t *testing.T) {
 
 		// given
-		l := `L 11/05/2018 - 15:44:36: "Player-Name<12><[U:1:29384012]><TERRORIST>" purchased "m4a1"`
+		l := `11/05/2018 - 15:44:36.123 - "Player-Name<12><[U:1:29384012]><TERRORIST>" purchased "m4a1"`
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
 		assert(t, nil, err)
 		assert(t, "PlayerPurchase", m.GetType())
-		assert(t, time.Date(2018, time.November, 5, 15, 44, 36, 0, time.UTC), m.GetTime())
+		assert(t, time.Date(2018, time.November, 5, 15, 44, 36, int(123*time.Millisecond), time.UTC), m.GetTime())
 	})
 
 	t.Run("error", func(t *testing.T) {
@@ -1016,10 +1014,10 @@ func TestParse(t *testing.T) {
 		l := `foo`
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
-		assert(t, cs2log.ErrorNoMatch, err)
+		assert(t, ErrorNoMatch, err)
 		assert(t, nil, m)
 	})
 
@@ -1027,26 +1025,26 @@ func TestParse(t *testing.T) {
 
 		// given
 		// day 50 out of range
-		l := `L 11/50/2018 - 15:44:36: "Player-Name<12><[U:1:29384012]><TERRORIST>" purchased "m4a1"`
+		l := `11/50/2018 - 15:44:36.123 - "Player-Name<12><[U:1:29384012]><TERRORIST>" purchased "m4a1"`
 
 		// when
-		m, err := cs2log.Parse(l)
+		m, err := Parse(l)
 
 		// then
-		assert(t, `parsing time "11/50/2018 - 15:44:36": day out of range`, err.Error())
+		assert(t, `parsing time "11/50/2018 - 15:44:36.123": day out of range`, err.Error())
 		assert(t, nil, m)
 	})
 
 	t.Run("parse with patterns", func(t *testing.T) {
 
-		l := `L 11/05/2018 - 15:44:36: "Player-Name<12><[U:1:29384012]><TERRORIST>" purchased "m4a1"`
+		l := `11/05/2018 - 15:44:36.123 - "Player-Name<12><[U:1:29384012]><TERRORIST>" purchased "m4a1"`
 
-		patterns := map[*regexp.Regexp]cs2log.MessageFunc{
-			regexp.MustCompile(cs2log.PlayerPurchasePattern): cs2log.NewPlayerPurchase,
+		patterns := map[*regexp.Regexp]MessageFunc{
+			regexp.MustCompile(PlayerPurchasePattern): NewPlayerPurchase,
 		}
 
 		// parse Message
-		m, err := cs2log.ParseWithPatterns(l, patterns)
+		m, err := ParseWithPatterns(l, patterns)
 
 		// then
 		assert(t, nil, err)
@@ -1057,28 +1055,28 @@ func TestParse(t *testing.T) {
 func BenchmarkFirstEntry(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		// best case: type match steart
-		cs2log.Parse(line(`World triggered "Match_Start" on "de_cache"`))
+		Parse(line(`World triggered "Match_Start" on "de_cache"`))
 	}
 }
 
 func BenchmarkMidEntry(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		// worst case: type unknown
-		cs2log.Parse(line(`"Player-Name<2><[U:1:29384012]><TERRORIST>" [480 -67 1782] attacked "Jon<9><BOT><CT>" [-134 362 1613] with "ak47" (damage "27") (damage_armor "3") (health "73") (armor "96") (hitgroup "chest")`))
+		Parse(line(`"Player-Name<2><[U:1:29384012]><TERRORIST>" [480 -67 1782] attacked "Jon<9><BOT><CT>" [-134 362 1613] with "ak47" (damage "27") (damage_armor "3") (health "73") (armor "96") (hitgroup "chest")`))
 	}
 }
 
 func BenchmarkUnknown(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		// worst case: type unknown
-		cs2log.Parse(line(`"Player-Name<12><STEAM_1:1:0101010><CT>" [-854 396 -286] does FOO BAR BAZ`))
+		Parse(line(`"Player-Name<12><STEAM_1:1:0101010><CT>" [-854 396 -286] does FOO BAR BAZ`))
 	}
 }
 
 // helper
 
 func line(line string) string {
-	return fmt.Sprintf("L 11/05/2018 - 15:44:36: %s\n", line)
+	return fmt.Sprintf("11/05/2018 - 15:44:36.123 - %s\n", line)
 }
 
 func assert(t *testing.T, want interface{}, have interface{}) {

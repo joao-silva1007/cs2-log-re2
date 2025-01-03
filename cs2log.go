@@ -11,7 +11,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"regexp"
+	regexp "github.com/wasilibs/go-re2"
 	"strconv"
 	"strings"
 	"time"
@@ -21,7 +21,7 @@ import (
 var ErrorNoMatch = errors.New("no match")
 
 // LogLinePattern is the regular expression to capture a line of a logfile
-var LogLinePattern = regexp.MustCompile(`L (\d{2}\/\d{2}\/\d{4} - \d{2}:\d{2}:\d{2}): (.*)`)
+var LogLinePattern = regexp.MustCompile(`(\d{2}\/\d{2}\/\d{4} - \d{2}:\d{2}:\d{2}.\d{3}) - (.*)`)
 
 type (
 
@@ -460,7 +460,7 @@ func ParseWithPatterns(line string, patterns map[*regexp.Regexp]MessageFunc) (Me
 	}
 
 	// parse time
-	ti, err := time.Parse("01/02/2006 - 15:04:05", result[1])
+	ti, err := time.Parse("01/02/2006 - 15:04:05.000", result[1])
 
 	// if parsing the date failed, return error
 	if err != nil {
