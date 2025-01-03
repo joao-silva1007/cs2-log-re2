@@ -1,3 +1,7 @@
+# Fork information
+
+This fork uses [go-re2]() to improve parsing performance. It also updates the regex patterns to receive logs directly from http from cs2.
+
 # cs2-log
 
 Go package for parsing cs2 server logfiles. It exports types for cs2 logfiles, their regular expressions, a function for
@@ -14,7 +18,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/janstuemmel/cs2-log"
+	cs2log "github.com/joao-silva-1007/cs2-log-re2"
 )
 
 func main() {
@@ -53,7 +57,7 @@ Example JSON output:
 
 ```json
 {
-  "time": "2018-11-05T15:44:36Z",
+  "time": "2018-11-05T15:44:36.123Z",
   "type": "PlayerPurchase",
   "player": {
     "name": "Player",

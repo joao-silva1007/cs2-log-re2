@@ -1,4 +1,4 @@
-module github.com/janstuemmel/cs2-log
+module github.com/joao-silva1007/cs2-log-re2
 
 go 1.23
 
