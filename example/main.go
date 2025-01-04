@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	cs2log "github.com/janstuemmel/cs2-log"
+	cs2log "github.com/joao-silva1007/cs2-log-re2"
 )
 
 // Usage:
